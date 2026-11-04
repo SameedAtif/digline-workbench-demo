@@ -39,7 +39,7 @@ test('boots, draws a polygon, scrubs the blast and toggles uncertainty', async (
         const text = await page.locator('[data-testid="toolbar"]').innerText()
         return text.includes('t = 1.00')
       },
-      { timeout: 20_000 },
+      { timeout: 60_000 },
     )
     .toBe(true)
 

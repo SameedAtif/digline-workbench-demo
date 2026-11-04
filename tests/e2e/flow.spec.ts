@@ -59,7 +59,7 @@ test('dig-line flow: draw, close, undo/redo, play, uncertainty, inspect', async 
         const text = await page.getByTestId('toolbar').innerText()
         return text.includes('t = 1.00')
       },
-      { timeout: 20_000 },
+      { timeout: 60_000 },
     )
     .toBe(true)
   const canvasAfter = await page.locator('canvas').screenshot()

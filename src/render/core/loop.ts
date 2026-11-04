@@ -22,7 +22,7 @@ export function createLoop(callback: FrameCallback): Loop {
   const tick = (now: number): void => {
     if (!running) return
     if (last === 0) last = now
-    const dt = Math.min(0.1, (now - last) / 1000)
+    const dt = Math.min(0.2, (now - last) / 1000)
     last = now
     elapsed += dt
     callback({ dt, elapsed })

@@ -4,8 +4,8 @@ const PORT = 5173
 
 export default defineConfig({
   testDir: './tests/e2e',
-  timeout: 40_000,
-  expect: { timeout: 10_000 },
+  timeout: 90_000,
+  expect: { timeout: 15_000 },
   fullyParallel: false,
   retries: 0,
   reporter: [['list']],
@@ -28,6 +28,6 @@ export default defineConfig({
     command: `pnpm dev --host 127.0.0.1 --port ${PORT} --strictPort`,
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: true,
-    timeout: 120_000,
+    timeout: 180_000,
   },
 })

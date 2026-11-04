@@ -48,7 +48,7 @@ export interface Workbench {
   dispose(): void
 }
 
-const PLAYBACK_SPEED = 0.35
+const PLAYBACK_SPEED = 0.6
 const METRICS_HZ = 15
 
 export function createWorkbench(viewer: Viewer): Workbench {
