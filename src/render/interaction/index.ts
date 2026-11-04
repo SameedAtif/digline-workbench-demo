@@ -1,0 +1,6 @@
+export { createPicker, encodeIndex, decodeIndex } from './picker'
+export type { Picker } from './picker'
+export { createSlicePlane } from './slice-plane'
+export type { SlicePlane, SlicePlaneOptions } from './slice-plane'
+export { createTraceLine } from './trace-line'
+export type { TraceLine } from './trace-line'
