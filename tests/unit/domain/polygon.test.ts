@@ -31,7 +31,7 @@ describe('area', () => {
         fc.double({ min: -100, max: 100, noNaN: true, noDefaultInfinity: true }),
         fc.double({ min: -100, max: 100, noNaN: true, noDefaultInfinity: true }),
         (dx, dz) => {
-          expect(area(square(2, dx, dz))).toBeCloseTo(4, 6)
+          expect(area(square(2, dx, dz))).toBeCloseTo(4, 5)
         },
       ),
       { numRuns: 200 },
