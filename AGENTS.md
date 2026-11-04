@@ -1,5 +1,7 @@
 # Agent notes
 
+Live demo: https://digline-workbench-demo.vercel.app/
+
 This project was built from the specifications in `docs/` with a small number of scoped agent runs. The human reviewed every module boundary and ran the quality gates locally.
 
 ## Delegation map

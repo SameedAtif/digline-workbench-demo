@@ -1,5 +1,7 @@
 # Module 03 — `data`
 
+> **As-built:** this module is implemented. See `docs/IMPLEMENTATION.md` for final architecture and deviations from this plan.
+
 Everything to do with getting a `BlockModel` into memory. Two sources: a seeded synthetic generator and a CSV importer that runs in a Web Worker.
 
 > Inherits from `PROJECT.md`.
@@ -26,6 +28,7 @@ Everything to do with getting a `BlockModel` into memory. Two sources: a seeded 
 - Schema validation with Zod and a per-file summary of rejected rows (count, first 5 reasons).
 - Transfer of the resulting typed-array buffers to the main thread without copying.
 - A small set of fixtures used by tests across the project.
+- A downloadable sample CSV in `public/sample-blocks.csv`.
 
 ### Out of scope
 - Any format beyond CSV (no DXF, no Datamine, no GeoTIFF).
@@ -54,6 +57,8 @@ src/data/
 ├── index.ts
 ├── generator.ts       # pure, synchronous; builds BlockModel from a seed
 ├── schema.ts          # Zod schema for a CSV row
+├── protocol.ts        # worker message/result types and limits
+├── csv-parse.ts       # pure, testable parse seam
 ├── csv.ts             # main-thread wrapper: spawns worker, awaits result
 ├── csv.worker.ts      # the worker itself
 └── __fixtures__/

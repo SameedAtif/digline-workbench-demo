@@ -3,6 +3,9 @@
 A browser-based 3D workbench for viewing a mine bench's block model, simulating blast-induced displacement, and seeing where a geologist's ore polygon ends up on the muckpile. Built as a portfolio piece for a role whose essential work is a 3D web front end (React, Three.js, TypeScript) over a physics-driven mining AI product.
 
 > This file is the single source of truth for scope, stack, architecture, patterns and conventions. Every module file and task file inherits from it. If a module file disagrees with this file, this file wins.
+>
+> **Status:** implemented and deployed. **Live demo:** https://digline-workbench-demo.vercel.app/
+> See [`docs/IMPLEMENTATION.md`](IMPLEMENTATION.md) for the final as-built architecture, feature inventory and intentional deviations from this plan.
 
 ---
 
@@ -31,12 +34,16 @@ The app has one purpose: show, in a browser, the geologist's dig-line decision a
 ## 3. Scope
 
 ### In scope
-- Instanced rendering of up to 500,000 blocks at a documented frame rate on a mid-range laptop.
-- Shader-driven interpolation between pre-blast and post-blast positions on a scrub timeline.
-- Polygon drawing on a bench plane with vertex edit, undo and redo.
-- Polygon deformation under the vector field, with before/after tonnage, mean grade and dilution percentage.
+- Instanced rendering of up to 500,000 blocks, selectable from the Model panel, at a documented frame rate.
+- Shader-driven interpolation between pre-blast and post-blast positions on a scrub timeline, plus ballistic arc, deterministic tumble and face shading.
+- Polygon drawing on a bench plane with click/drag placement, vertex edit, whole-polygon move, undo and redo.
+- Deterministic post-blast muckpile settle pass.
+- Polygon deformation under the vector field, with before/after tonnage, mean grade, dilution and ore loss.
 - Slice plane, grade cutoff slider, click-to-trace block from origin to destination.
-- CSV import for block models, with a worker-based parser.
+- Toggleable vector-field arrows sampled over the bench surface.
+- Seeded uncertainty ensemble with confidence bands and member/sigma controls.
+- Synthetic monitor points, predicted-vs-measured residuals, and calibration of max throw and decay.
+- CSV import for block models, with a worker-based parser and a downloadable sample.
 - Deterministic synthetic data generator (seeded).
 - Live-deployed demo and a one-page README with performance numbers.
 
@@ -66,7 +73,7 @@ Chosen to match the job description. No substitutions from the CV's familiar sta
 | Build tool | Vite 6 | Fast, modern, standard for this stack. |
 | State | Zustand with slice pattern | Lightweight, keeps 3D state out of React re-renders. |
 | Styling | Tailwind CSS v4 + Radix primitives | Minimal UI chrome, no custom design system. |
-| Geometry utilities | three-mesh-bvh, earcut | Spatial queries and polygon triangulation. |
+| Geometry utilities | earcut | Polygon triangulation for the dig-line fill. |
 | CSV parsing | PapaParse in a Web Worker | Non-blocking parse for large files. |
 | Testing | Vitest, React Testing Library, Playwright (one smoke test) | Standard, fast. |
 | Lint and format | ESLint flat config, Prettier | Standard. |
@@ -74,25 +81,28 @@ Chosen to match the job description. No substitutions from the CV's familiar sta
 | Hosting | Vercel static | Zero infra effort. |
 | Agentic engineering | Claude Code with a documented AGENTS.md | Posting lists agent orchestration. |
 
-Deliberately not used: react-three-fiber (wraps the engine the posting named), Next.js (no server rendering need), tRPC, Prisma, Terraform, Docker, Cloud Run, Playwright suites beyond one smoke test. These would be effort spent off-target.
+Deliberately not used: react-three-fiber (wraps the engine the posting named), Next.js (no server rendering need), tRPC, Prisma, Terraform, Docker, Cloud Run, Playwright suites beyond the small smoke/flow set. These would be effort spent off-target.
 
 ## 5. Features the user will experience
 
 Ordered by what the user sees first.
 
-1. **Open the app and see a bench.** A seeded synthetic bench loads automatically. Camera is already framed on it.
+1. **Open the app and see a bench.** A seeded synthetic bench loads automatically, with a demo ore polygon already placed so the metrics are immediately meaningful.
 2. **Orbit, pan, zoom.** Standard orbit controls, with a reset-view button.
 3. **Colour mode toggle.** Grade, material type, or neutral.
-4. **Grade cutoff slider.** Fades out blocks below the cutoff.
-5. **Slice plane.** A draggable plane that hides blocks on one side.
-6. **Draw an ore polygon.** Click points on the bench top to add vertices, double-click to close. Drag a vertex to edit. Ctrl-Z to undo.
+4. **Grade cutoff slider.** Hides blocks below the cutoff.
+5. **Slice plane.** An X-axis slice controlled by a slider, with a visible plane helper.
+6. **Draw an ore polygon.** Click or click-drag points on the bench top to add vertices, close it from the toolbar or by double-clicking. Drag a handle to reshape, drag inside the polygon to move it, Alt-click a handle to delete it, Ctrl-Z to undo.
 7. **Simulate blast.** A scrubber from t=0 (pre-blast) to t=1 (post-blast). Play, pause, reset.
-8. **See the polygon deform.** The polygon's outline moves with the blocks; the fill updates each frame.
-9. **Stats panel.** Live tonnes inside polygon, mean grade, dilution percentage, ore loss percentage, measured against the pre-blast baseline.
-10. **Click a block.** A line is drawn from its pre-blast position to its post-blast position; a side panel shows the block's grade and material.
-11. **Toggle uncertainty.** Shows an ensemble of 10 perturbed vector fields as a translucent band around the polygon.
-12. **Import CSV.** Drag a CSV of blocks onto the viewport. The worker parses, validates, and swaps the model in.
-13. **Performance HUD.** Toggleable FPS, draw calls, instance count, memory. Off by default.
+8. **See the polygon deform.** The polygon's outline moves with the blocks; the fill updates each frame. Blocks arc, tumble and settle into a deterministic muckpile.
+9. **Stats panel.** Live tonnes inside polygon, mean grade, dilution percentage and ore loss percentage, measured against the pre-blast baseline.
+10. **Click a block.** A dashed line is drawn from its pre-blast to post-blast position; a side panel shows the block's grade and material.
+11. **Field arrows.** Toggle a sampled arrow grid showing the active 3D displacement field.
+12. **Toggle uncertainty.** Shows an ensemble of perturbed vector fields as a translucent band around the polygon, with member and sigma controls.
+13. **Calibration.** Synthetic monitor points show predicted vs measured displacement; a button fits max throw and decay and sets ensemble sigma from the residual RMS.
+14. **Bench-size selector.** Switch between 11.5k, 100k, 250k and 500k blocks.
+15. **Import CSV.** Drag a CSV of blocks onto the viewport or use the toolbar. The worker parses, validates and swaps the model in. A sample CSV is included.
+16. **Performance HUD.** Toggleable FPS, frame time, draw calls, instance count and memory. Off by default.
 
 ## 6. Main modules in the codebase
 
@@ -106,6 +116,7 @@ Modules are implemented in this order. Each module has its own file (`docs/modul
 6. **`interaction`** — picking (GPU readback or BVH raycast), slice plane, grade cutoff, click-to-trace.
 7. **`polygon`** — polygon drawing tool, vertex edit, undo/redo, deformation under the vector field, metrics computation (tonnes, grade, dilution).
 8. **`uncertainty`** — ensemble of perturbed vector fields and the uncertainty band visualisation.
+9. **`calibration`** — synthetic monitor points, predicted-vs-measured residuals, deterministic field calibration and field-arrow visualisation. Added after the original plan; see `docs/modules/09-calibration.md`.
 
 Everything above is front end. If time allows, a stretch module `service` adds a tiny Node + Fastify endpoint that streams block chunks. It is strictly optional; the posting says backend is a plus, not required.
 
@@ -113,99 +124,47 @@ Everything above is front end. If time allows, a stretch module `service` adds a
 
 ```
 dig-line-workbench/
-├── AGENTS.md                        # how agents were orchestrated
-├── README.md                        # one page, with the live link and FPS numbers
-├── PROJECT.md                       # this file
+├── AGENTS.md
+├── README.md
 ├── docs/
-│   ├── modules/
-│   │   ├── 01-platform.md
-│   │   ├── 02-domain.md
-│   │   ├── 03-data.md
-│   │   ├── 04-render-core.md
-│   │   ├── 05-render-blocks.md
-│   │   ├── 06-interaction.md
-│   │   ├── 07-polygon.md
-│   │   └── 08-uncertainty.md
-│   └── tasks/
-│       ├── 01-platform/
-│       │   ├── 01-scaffold.md
-│       │   ├── 02-tooling.md
-│       │   └── 03-app-shell.md
-│       ├── 02-domain/
-│       │   ├── 01-types.md
-│       │   ├── 02-vector-field.md
-│       │   └── 03-metrics.md
-│       └── ...                      # mirrors modules
+│   ├── PROJECT.md
+│   ├── IMPLEMENTATION.md          # as-built reference
+│   ├── modules/                   # 01-platform … 09-calibration
+│   └── tasks/                     # original implementation prompts
 ├── public/
+│   ├── favicon.svg
+│   └── sample-blocks.csv
+├── scripts/
+│   └── measure-fps.mjs
 ├── src/
-│   ├── main.tsx                     # React root
-│   ├── App.tsx                      # layout only
-│   ├── domain/                      # module 2
-│   │   ├── block.ts
-│   │   ├── polygon.ts
-│   │   ├── vector-field.ts
-│   │   ├── metrics.ts
-│   │   ├── units.ts
-│   │   └── index.ts
-│   ├── data/                        # module 3
-│   │   ├── generator.ts
-│   │   ├── csv.worker.ts
-│   │   ├── schema.ts
-│   │   └── index.ts
+│   ├── main.tsx / App.tsx / workbench.ts
+│   ├── types/
+│   ├── domain/                    # block, polygon, vector-field, apply, muckpile,
+│   │                              # metrics, calibration, prng, units
+│   ├── data/                      # generator, schema, protocol, csv-parse,
+│   │                              # csv.worker.ts, csv.ts
+│   ├── state/                     # store + scene/blast/polygon/ui/metrics/
+│   │                              # uncertainty/calibration slices
 │   ├── render/
-│   │   ├── core/                    # module 4
-│   │   │   ├── scene.ts
-│   │   │   ├── camera.ts
-│   │   │   ├── renderer.ts
-│   │   │   ├── loop.ts
-│   │   │   └── controls.ts
-│   │   ├── blocks/                  # module 5
-│   │   │   ├── instanced-blocks.ts
-│   │   │   ├── block.vert.glsl
-│   │   │   ├── block.frag.glsl
-│   │   │   └── color-ramp.ts
-│   │   ├── interaction/             # module 6
-│   │   │   ├── picker.ts
-│   │   │   ├── slice-plane.ts
-│   │   │   └── trace-line.ts
-│   │   └── polygon/                 # module 7 (3D-side only)
-│   │       ├── polygon-mesh.ts
-│   │       └── polygon-handles.ts
-│   ├── polygon/                     # module 7 (logic + UI)
-│   │   ├── store.ts
-│   │   ├── drawer.ts
-│   │   ├── history.ts
-│   │   └── metrics-panel.tsx
-│   ├── uncertainty/                 # module 8
-│   │   ├── ensemble.ts
-│   │   └── band.ts
-│   ├── ui/
-│   │   ├── Viewport.tsx             # mounts the renderer
-│   │   ├── Toolbar.tsx
-│   │   ├── StatsPanel.tsx
-│   │   ├── HUD.tsx
-│   │   └── primitives/              # Radix wrappers
-│   ├── state/
-│   │   ├── store.ts                 # root Zustand store
-│   │   └── slices/
-│   │       ├── scene.slice.ts
-│   │       ├── blast.slice.ts
-│   │       ├── polygon.slice.ts
-│   │       └── ui.slice.ts
-│   ├── workers/
-│   │   └── csv.worker.ts
-│   └── types/
+│   │   ├── core/                  # viewer, camera, controls, loop, resize
+│   │   ├── blocks/                # instanced-blocks, GLSL, color-ramp
+│   │   ├── interaction/           # picker, slice-plane, trace-line
+│   │   ├── polygon/               # ribbon/fill/handles layer
+│   │   ├── uncertainty/           # ensemble-band
+│   │   ├── field-arrows.ts
+│   │   └── monitor-layer.ts
+│   ├── polygon/                   # drawer, history, keyboard, metrics-panel
+│   ├── uncertainty/               # ensemble + toggle controls
+│   └── ui/                        # Viewport, Toolbar, StatsPanel, Inspector,
+│                                  # CalibrationPanel, HUD
 ├── tests/
-│   ├── unit/                        # mirrors src/
-│   ├── integration/
-│   └── e2e/
-│       └── smoke.spec.ts
+│   ├── unit/                      # domain, data, uncertainty, ui
+│   ├── e2e/                       # smoke + flow specs
+│   └── fixtures/
 ├── index.html
-├── vite.config.ts
-├── tsconfig.json
-├── eslint.config.js
-├── .prettierrc
-└── package.json
+├── vite.config.ts / vitest.config.ts / playwright.config.ts
+├── tsconfig.json / eslint.config.js / .prettierrc
+└── package.json / pnpm-lock.yaml / vercel.json
 ```
 
 Rules:
@@ -279,8 +238,8 @@ Each practice is linked to someone who contributed to the specific tool or domai
 ### 9.6 Testing
 - Vitest for unit tests of `domain`, with property-based tests for geometry via `fast-check`.
   - Reference: Nicolas Dubien (author of `fast-check`) on property-based testing in TypeScript.
-- One Playwright smoke test: open the app, see a canvas with non-zero pixels, scrub the blast.
-  - Reference: Playwright team's own guidance (Andrey Lushnikov) on using a single end-to-end smoke rather than a brittle suite.
+- A small Playwright suite: one smoke test plus full-flow tests for drawing, scrubbing, uncertainty, picking, CSV import, field arrows, calibration and bench-size switching.
+  - Reference: Playwright team's own guidance (Andrey Lushnikov) on using a small, robust end-to-end suite rather than a brittle one.
 
 ### 9.7 Performance
 - Measure before optimising. `performance.now()` around the hot paths, Chrome DevTools performance panel for frame breakdowns.
@@ -296,9 +255,10 @@ Each practice is linked to someone who contributed to the specific tool or domai
 
 ## 10. Delivery
 
-- Deployed to Vercel at a stable URL, linked from the README.
-- 90-second screen recording in the README, hosted as an unlisted link.
+- Deployed to Vercel at https://digline-workbench-demo.vercel.app/ and linked from the README.
 - README fits on one scroll on a laptop: what, why, live link, numbers, how to run.
+- The as-built architecture and deviations are recorded in `docs/IMPLEMENTATION.md`.
+- A screen recording is optional and not included in the final repository.
 
 ## 11. Risks and how they're handled
 
@@ -312,9 +272,12 @@ Each practice is linked to someone who contributed to the specific tool or domai
 
 ## 12. Done means
 
-- 500k blocks render at the budgeted FPS on the stated hardware.
-- A user can draw a polygon, scrub a blast, and read tonnes/grade/dilution before and after.
+- 500k blocks render above the 60 fps budget on the stated hardware (measured uncapped: 349 fps).
+- A user can draw, move and edit a polygon, scrub a blast, and read tonnes/grade/dilution/ore-loss before and after.
 - The uncertainty toggle produces a visibly different band.
+- Field arrows render the active 3D field.
+- The calibration panel shows monitor residuals and reduces RMS after fitting max throw and decay.
 - The CSV importer accepts a valid file and refuses a bad one with a clear message.
 - The live link works and shows all of the above without a reload.
 - README has the link, the numbers, and the AGENTS.md pointer.
+- `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm build` and `pnpm test:e2e` pass.

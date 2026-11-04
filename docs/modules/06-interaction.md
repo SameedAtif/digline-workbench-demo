@@ -1,5 +1,7 @@
 # Module 06 — `interaction`
 
+> **As-built:** this module is implemented. See `docs/IMPLEMENTATION.md` for final architecture and deviations from this plan.
+
 Pointing at things and telling the renderer what to show or hide. Picking a block, dragging a slice plane, moving a grade-cutoff slider, drawing the origin-to-destination trace line.
 
 > Inherits from `PROJECT.md`.
@@ -10,9 +12,10 @@ Pointing at things and telling the renderer what to show or hide. Picking a bloc
 
 Three cooperating pieces:
 
-- `Picker` — turns a mouse event on the canvas into the index of the block under the cursor. Uses GPU readback (one 1×1 pixel from an off-screen "id" render target).
-- `SlicePlane` — a draggable `THREE.Plane` with a handle gizmo; the plane is passed to the `BlockField` material as a clipping plane.
-- `TraceLine` — on block click, draws a dashed line from the block's pre-blast to post-blast centroid and surfaces the block's grade and material in a side panel through the store.
+- `Picker` — turns a mouse event on the canvas into the index of the block under the cursor. Uses GPU readback (one 1×1 pixel from an off-screen "id" render target). The planned BVH fallback is not implemented.
+- `SlicePlane` — an X-axis-aligned `THREE.Plane` with a visible helper; its position is controlled by a UI slider and passed to the block shader as a custom clip uniform.
+- `TraceLine` — on block click, draws a dashed `THREE.Line` from the block's pre-blast to post-blast centroid and surfaces the block's grade and material in a side panel through the store.
+- `field-arrows.ts` and `monitor-layer.ts` live alongside interaction as overlay layers.
 
 The grade cutoff slider itself is a UI slider in `ui/`; this module just exposes the shader uniform it writes to via the store.
 
@@ -26,7 +29,7 @@ The grade cutoff slider itself is a UI slider in `ui/`; this module just exposes
 
 ### In scope
 - GPU picking with one off-screen `WebGLRenderTarget` (R8G8B8A8), packing instance id as RGBA.
-- Fallback raycast via `three-mesh-bvh` on the `InstancedMesh` for debugging; off by default.
+- No `three-mesh-bvh` fallback in the final build.
 - Slice plane with:
   - 3D handle (a small translucent quad with grabber dots on edges).
   - Pointer drag along the plane normal.
@@ -43,7 +46,7 @@ The grade cutoff slider itself is a UI slider in `ui/`; this module just exposes
 | Thing | Choice |
 |---|---|
 | Picking | GPU id buffer, 1 pixel readback via `renderer.readRenderTargetPixels` |
-| Raycast fallback | `three-mesh-bvh` on `InstancedMesh` |
+| Raycast fallback | Not used in the final build |
 | Gizmos | Hand-rolled, no `TransformControls` (too heavy for this one slice) |
 
 ## 5. Features the rest of the app will consume
@@ -63,7 +66,7 @@ src/render/interaction/
 ├── index.ts
 ├── picker.ts           # id-buffer render target, pointer→instanceId
 ├── slice-plane.ts      # Plane + handle Mesh, drag logic
-├── trace-line.ts       # pooled Line2 or LineSegments
+├── trace-line.ts       # single reusable dashed THREE.Line
 └── picking.vert.glsl   # minimal vs that writes aIndex to colour
 └── picking.frag.glsl
 ```

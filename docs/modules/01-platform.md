@@ -1,5 +1,7 @@
 # Module 01 — `platform`
 
+> **As-built:** this module is implemented. See `docs/IMPLEMENTATION.md` for final architecture and deviations from this plan.
+
 The scaffold the whole app sits on: Vite, TypeScript, React, lint, format, test runner, path aliases, and an empty app shell that boots to a dark viewport. Nothing more.
 
 > Inherits from `PROJECT.md`. If this file disagrees with the master, the master wins.
@@ -32,7 +34,7 @@ A production-quality TypeScript + React 19 project that:
 - `vite.config.ts` with React plugin, GLSL plugin for later shader imports, path aliases.
 - `eslint.config.js` (flat) with `@typescript-eslint`, `eslint-plugin-react`, `eslint-plugin-react-hooks`.
 - `.prettierrc` with 2-space indent, no semi-less, single quotes.
-- `vitest.config.ts` with jsdom env for component tests, node env for domain tests via project split.
+- `vitest.config.ts` with a jsdom environment and a single test run.
 - `index.html` with `<div id="root">` and dark background.
 - `src/main.tsx`, `src/App.tsx`, `src/ui/Viewport.tsx` as a stub.
 - `.github/workflows/ci.yml` running `pnpm install`, `pnpm typecheck`, `pnpm lint`, `pnpm test --run`.
@@ -47,13 +49,13 @@ A production-quality TypeScript + React 19 project that:
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Node | 22 LTS | Pinned via `.nvmrc` and `engines`. |
+| Node | 20 LTS (22-compatible) | Pinned via `.nvmrc` and `engines`. |
 | Package manager | pnpm 9 | `packageManager` field in `package.json`. |
 | Bundler | Vite 6 + `@vitejs/plugin-react` | `vite-plugin-glsl` added here, used from module 05. |
 | TypeScript | 5.6+ | Strict + extra flags per master file. |
 | Lint | ESLint 9 flat config | `@typescript-eslint`, React, React Hooks, import. |
 | Format | Prettier 3 | Shared config, pre-commit optional. |
-| Test runner | Vitest 2 | Two Vitest projects: `node` for `domain`, `jsdom` for everything else. |
+| Test runner | Vitest 2 | One jsdom environment; domain tests remain browser-free. |
 | CSS | Tailwind v4, PostCSS | Dark baseline only in this module. |
 | CI | GitHub Actions | One workflow file, three jobs: typecheck, lint, test. |
 

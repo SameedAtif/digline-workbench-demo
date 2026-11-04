@@ -1,5 +1,7 @@
 # Module 02 — `domain`
 
+> **As-built:** this module is implemented. See `docs/IMPLEMENTATION.md` for final architecture and deviations from this plan.
+
 Pure TypeScript. The brain of the app. No React, no Three.js, no DOM. If a browser ever disappeared, this module would still compile and its tests would still pass.
 
 > Inherits from `PROJECT.md`.
@@ -14,6 +16,7 @@ A set of typed data structures and pure functions covering:
 - `Polygon` on a plane, with vertex, edge and area operations.
 - `VectorField` (a `Strategy` with a `sample(x, y, z) → Vec3` method).
 - Metrics: tonnes in polygon, mean grade, dilution %, ore-loss %.
+- Synthetic monitors and deterministic calibration of the free-face parameters.
 - Units via branded types (`Metres`, `Tonnes`, `GramsPerTonne`, `Density`).
 
 Every function is total, deterministic, and side-effect free.
@@ -31,10 +34,12 @@ Every function is total, deterministic, and side-effect free.
 - Columnar `BlockModel` with: `x`, `y`, `z` (centroid), `size`, `grade`, `material`, `tonnes` as parallel typed arrays, plus `count`.
 - Factory `createBlockModel(buffers)` with runtime invariants (equal lengths, finite numbers).
 - `VectorField` strategy interface + three implementations: `UniformField`, `FreeFaceField`, `PerturbedField`.
-- `applyField(model, field, t) → BlockModel` returning a shallow-copied model with updated positions (buffers reused where safe, copied where not).
+- `applyField(model, field, t) → BlockModel` returning a shallow-copied model with updated positions.
+- `settleToMuckpile(original, post)` deterministic height-settle pass for the visual muckpile.
 - Polygon ops: `area`, `centroid`, `pointInPolygon`, `bufferedBoundingBox`.
 - Polygon deformation: `deformPolygon(polygon, field, t) → Polygon`.
-- Metrics on (model, polygon, t): `polygonTonnes`, `polygonMeanGrade`, `dilution`, `oreLoss` — comparing the baseline (t=0) ore classification to post-blast positions.
+- Metrics on (model, polygon, t): `polygonTonnes`, `polygonMeanGrade`, `dilution`, `oreLoss` — comparing the baseline (t=0) ore classification to post-blast positions. Block displacement is sampled at each block's real Y.
+- Monitor generation, residual evaluation and `calibrateField` for max throw/decay.
 
 ### Out of scope
 - Any I/O. Parsing CSV lives in `data`.
@@ -61,6 +66,7 @@ import {
   applyField,
   polygonTonnes, polygonMeanGrade, dilution, oreLoss,
   Metres, Tonnes, GramsPerTonne, mulberry32,
+  settleToMuckpile, generateMonitors, evaluateMonitors, calibrateField,
 } from '@/domain';
 ```
 
@@ -73,9 +79,11 @@ src/domain/
 ├── prng.ts               # mulberry32
 ├── block.ts              # BlockModel + factory + invariants
 ├── polygon.ts            # Polygon + area/centroid/point-in-polygon
-├── vector-field.ts       # VectorField strategy + 3 impls
+├── vector-field.ts       # VectorField strategy + 3 impls + bench factory
 ├── apply.ts              # applyField, deformPolygon
-└── metrics.ts            # tonnes/grade/dilution/ore-loss
+├── muckpile.ts           # deterministic post-blast settle pass
+├── metrics.ts            # tonnes/grade/dilution/ore-loss
+└── calibration.ts        # monitors, residuals, max-throw/decay fit
 ```
 
 ## 7. Design patterns

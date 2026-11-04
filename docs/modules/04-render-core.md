@@ -1,5 +1,7 @@
 # Module 04 — `render-core`
 
+> **As-built:** this module is implemented. See `docs/IMPLEMENTATION.md` for final architecture and deviations from this plan.
+
 The Three.js scaffolding. One `WebGLRenderer`, one `PerspectiveCamera`, one `Scene`, one `OrbitControls`, one `requestAnimationFrame` loop. No content yet.
 
 > Inherits from `PROJECT.md`.
@@ -32,8 +34,10 @@ A `Viewport.tsx` React component instantiates the `Viewer` on mount and tears it
 - Linear sRGB output, ACES filmic tone mapping, dark `scene.background`.
 - A grid helper and an axes helper hidden behind a dev flag.
 - Frame budget tracking: moving average FPS, last frame time, draw calls (via `renderer.info`).
+- Viewer `onFrame`/`onResize` subscriptions and a `frame(bounds)` reset helper.
 - Explicit `dispose()` tearing down geometries, materials, textures, controls, resize observer.
 - A `useViewer()` React hook that reads the current `Viewer` for sibling components.
+- StrictMode is intentionally not used: disposing and re-creating a `WebGLRenderer` on the same canvas after `forceContextLoss()` loses the context in dev.
 
 ### Out of scope
 - Post-processing (EffectComposer).

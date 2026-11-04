@@ -1,5 +1,7 @@
 # Module 07 — `polygon`
 
+> **As-built:** this module is implemented. See `docs/IMPLEMENTATION.md` for final architecture and deviations from this plan.
+
 The feature a geologist is actually hired to do: draw an ore polygon, see where it ends up after the blast, read the tonnes and dilution. This is the module that justifies the whole app.
 
 > Inherits from `PROJECT.md`.
@@ -12,7 +14,8 @@ Three cooperating parts:
 
 - **Drawer** — a state machine for drawing a polygon on the bench's top plane: `idle → placing → closed → editing`.
 - **History** — command-pattern undo/redo over polygon edits.
-- **Render + metrics** — a Three.js `Line2` outline and a `Mesh` fill (triangulated with `earcut`), both deformed under the active `VectorField` as `uT` changes; a React `StatsPanel` reads live tonnes, mean grade, dilution and ore loss from the store.
+- **Render + metrics** — a world-space bright ribbon `Mesh` for the outline, a 1px `THREE.Line` glow, and an `earcut`-triangulated fill. Vertices are deformed on the CPU under the active `VectorField` as `uT` changes; a React `StatsPanel` reads live tonnes, mean grade, dilution and ore loss from the store.
+- **Example + direct manipulation** — a demo polygon loads on first run; users can click-drag to place, drag a handle to reshape, drag inside to move the whole polygon, and Alt-click to delete.
 
 ## 2. What this module is not
 
@@ -23,10 +26,10 @@ Three cooperating parts:
 ## 3. Scope
 
 ### In scope
-- Pointer tooling on the bench top plane: click to add vertex, double-click to close, drag a vertex to edit, Alt-click a vertex to delete.
+- Pointer tooling on the bench top plane: click or click-drag to add a vertex, close from the toolbar or double-click, drag a vertex to edit, drag inside a closed polygon to move it, Alt-click a vertex to delete.
 - Keyboard: `Ctrl/Cmd + Z` undo, `Shift + Ctrl/Cmd + Z` redo, `Esc` cancel current draw.
-- Polygon rendered as `Line2` with constant screen-space width (so it reads at any zoom), and a translucent fill.
-- Shader-side deformation of the polygon in sync with the blocks: both read from the same `uT` and the same vector-field uniforms, so they never drift.
+- Polygon rendered as a world-space ribbon plus glow and a translucent fill.
+- CPU-side deformation of the polygon vertices on each scrub tick, using the same `uT` and `VectorField` as the blocks.
 - Live metrics panel: tonnes inside polygon (now), mean grade, dilution %, ore-loss %, all relative to the t=0 ore classification.
 
 ### Out of scope
@@ -38,7 +41,7 @@ Three cooperating parts:
 
 | Thing | Choice |
 |---|---|
-| Line rendering | `three/examples/jsm/lines/Line2` for proper width |
+| Line rendering | custom world-space ribbon `Mesh` + 1px glow line |
 | Triangulation | `earcut` for the fill |
 | State | Zustand slice `polygon.slice.ts` |
 | UI | React + Radix number inputs for showing stats |
@@ -56,15 +59,17 @@ import { MetricsPanel } from '@/polygon/metrics-panel';
 
 ```
 src/polygon/
-├── store.ts            # Zustand slice: vertices, mode, history
-├── drawer.ts           # state machine; wires pointer events to store actions
-├── history.ts          # command stack (AddVertex, MoveVertex, DeleteVertex, Close)
-└── metrics-panel.tsx   # React, reads selectors
+├── drawer.ts           # pointer state machine; place, vertex drag, polygon drag
+├── history.ts          # command stack (AddVertex, MoveVertex, MovePolygon, DeleteVertex, Close)
+├── keyboard.ts         # undo/redo/Esc shortcuts
+├── metrics-panel.tsx   # React, reads selectors
+└── index.ts
+
+src/state/slices/polygon.slice.ts   # vertices, mode, editing vertex, history
 
 src/render/polygon/
-├── polygon-mesh.ts     # Line2 + triangulated Mesh; vertex shader deforms via field
-├── polygon-handles.ts  # draggable vertex handles (small InstancedMesh)
-└── polygon.vert.glsl   # shared with block.vert.glsl's displacement function via GLSL include
+├── polygon-mesh.ts     # ribbon outline + glow + earcut fill + handles
+└── index.ts
 ```
 
 ## 7. Design patterns

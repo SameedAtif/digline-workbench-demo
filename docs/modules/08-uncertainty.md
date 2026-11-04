@@ -1,5 +1,7 @@
 # Module 08 — `uncertainty`
 
+> **As-built:** this module is implemented. See `docs/IMPLEMENTATION.md` for final architecture and deviations from this plan.
+
 The feature that makes the demo feel honest: an ensemble of perturbed vector fields renders a translucent band around the polygon, showing where the dig line could plausibly end up. Also where a Playwright smoke test and the README's performance numbers live.
 
 > Inherits from `PROJECT.md`.
@@ -9,7 +11,7 @@ The feature that makes the demo feel honest: an ensemble of perturbed vector fie
 ## 1. What this module is
 
 - An `Ensemble` of N (default 10) `PerturbedField` instances produced from a seeded jitter of the base field.
-- A visualisation layer that renders each ensemble member's polygon outline at low opacity, so the overlap forms a band.
+- A visualisation layer that renders each ensemble member's polygon outline at low opacity, so the overlap forms a band. It uses one `THREE.Line` per member rather than a single instanced `Line2`.
 - A toggle in the UI; off by default to keep the base demo clean.
 - The project's single Playwright smoke test: boot the app, scrub, enable uncertainty, check a canvas pixel changed.
 
@@ -23,10 +25,10 @@ The feature that makes the demo feel honest: an ensemble of perturbed vector fie
 
 ### In scope
 - Deterministic ensemble generation: given `(baseField, seed, N, sigma)` the ensemble is reproducible.
-- Shared displacement shader across all ensemble polygons; each one picks its member via an instanced attribute index.
-- A single `InstancedMesh` of `Line2` segments for all ensemble outlines (one draw, N instances).
-- Toggle, member count, sigma — three UI controls behind a disclosure panel.
-- One Playwright smoke test asserting the band appears when toggled.
+- CPU-side per-member outline generation using the same `VectorField` as the main polygon.
+- One `THREE.Line` per member, up to 32 members.
+- Toggle, member count and sigma controls, plus coupling to calibration: a successful field fit sets sigma from the residual RMS (manual override remains).
+- The Playwright smoke test toggles the band; the flow suite covers calibration, arrows and model-size switching.
 
 ### Out of scope
 - Confidence intervals, p-values, calibration curves.
@@ -38,7 +40,7 @@ The feature that makes the demo feel honest: an ensemble of perturbed vector fie
 | Thing | Choice |
 |---|---|
 | Jitter | `mulberry32` + Box-Muller for normal noise, reusing `prng.ts` from `domain` |
-| Lines | `Line2` segments, instanced per ensemble member |
+| Lines | one `THREE.Line` per ensemble member |
 | E2E | Playwright 1.49, one test file, headless Chromium |
 
 ## 5. Features the rest of the app will consume

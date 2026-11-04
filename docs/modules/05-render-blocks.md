@@ -1,5 +1,7 @@
 # Module 05 — `render-blocks`
 
+> **As-built:** this module is implemented. See `docs/IMPLEMENTATION.md` for final architecture and deviations from this plan.
+
 The hero of the project. An `InstancedMesh` of up to 500,000 blocks with a custom `ShaderMaterial` that interpolates each block between its pre-blast and post-blast position in the vertex shader. One draw call. No per-frame JS per block.
 
 > Inherits from `PROJECT.md`.
@@ -17,7 +19,8 @@ The hero of the project. An `InstancedMesh` of up to 500,000 blocks with a custo
   - `aSize` — block edge length (float)
 - A `uT` uniform drives the interpolation.
 - A 1D texture holds a colour ramp (`viridis` by default, swappable).
-- The fragment shader fades a block out below the current grade cutoff and respects the slice plane via a clipping plane set on the material.
+- The fragment shader discards blocks below the current grade cutoff and respects the slice plane via a custom `uClipPlane` discard.
+- The vertex shader also adds a ballistic arc, deterministic tumble and normal-based face shading.
 
 ## 2. What this module is not
 
@@ -29,8 +32,8 @@ The hero of the project. An `InstancedMesh` of up to 500,000 blocks with a custo
 
 ### In scope
 - `createBlockField(model: BlockModel) → BlockField`.
-- Shader-side interpolation `mix(aPos0, aPos1, uT)` and no per-frame JS writes to the matrix array.
-- Grade-based colour via a 1D ramp texture; `uCutoff` fades below-cutoff blocks.
+- Shader-side interpolation `mix(aPos0, aPos1, uT)` plus arc/tumble/shading, with no per-frame JS writes to the matrix array.
+- Grade-based colour via a 1D ramp texture; `uCutoff` hides below-cutoff blocks.
 - Clipping plane uniform for the slice.
 - `blockField.updatePostBlast(positions1)` for when the field changes.
 - `blockField.dispose()`.
